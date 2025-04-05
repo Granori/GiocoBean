@@ -1,31 +1,284 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gioco</title>
     <script src="https://unpkg.com/kaplay@3001/dist/kaplay.js"></script>
 </head>
+
 <body>
 
     <script>
+        class Livello {
+            mappa;
+            sfondo;
+
+            constructor(mappa) {
+                this.mappa = mappa.reverse();
+
+                this.generaSfondo();
+                this.generaMappa();
+            }
+
+            generaSfondo() {
+                let sfondo = pagina.add([
+                    sprite("cielo1", { width: width() }),
+                    layer("background"),
+                    pos(0, -1600)
+                ]);
+            }
+
+            generaMappa() {
+                let x = 0;
+                let y = 50;
+                this.mappa.forEach(riga => {
+                    if (riga.charAt(riga.length - 1) == "!") {
+                        riga = riga.slice(0, -1);
+                        while (riga.length <= 24) {
+                            if (riga.charAt(riga.length - 1) == "=") riga += "=";
+                            else if (riga.charAt(riga.length - 1) == " ") riga += " ";
+                            else if (riga.charAt(riga.length - 1) == "#") riga += "#";
+                            else if (riga.charAt(riga.length - 1) == "^") riga += "^";
+                        }
+                    }
+
+                    if (riga.charAt(riga.length - 1) == "?") {
+                        if (riga.length == 1) riga = "=" + riga;
+                        riga = riga.slice(0, -1);
+
+                        let trappole = false;
+                        while (riga.length <= 24) {
+                            if (riga.charAt(riga.length - 1) == "=") riga += "  ";
+                            else if (riga.charAt(riga.length - 1) == " ") {
+                                if (!trappole) riga += " =";
+                                else riga += " ^";
+                            }
+                            else if (riga.charAt(riga.length - 1) == "^") {
+                                riga += "  ";
+                                trappole = true;
+                            }
+                        }
+                    }
+
+                    let posPiattaforma = riga.indexOf("<");
+                    if (posPiattaforma == -1) posPiattaforma = riga.indexOf(">");
+
+                    
+                    let vel = posPiattaforma != -1 && !isNaN(parseInt(riga.charAt(posPiattaforma+1)));
+                    if (posPiattaforma != -1)
+                        console.log(vel)
+                    let molt = 1;
+
+                    let raggiunto = false;
+                    for (let i = 0; i < riga.length; i++) {
+                        if (vel && raggiunto) {
+                            vel = false;
+                            raggiunto = false;
+                            continue;
+                        }
+
+                        switch (riga.charAt(i)) {
+                            case "=":
+                                pagina.add([
+                                    pagina.sprite("terra"),
+                                    pagina.pos(x, altezza - y),
+                                    pagina.area(),
+                                    pagina.body({ isStatic: true })
+                                ]);
+                                break;
+
+                            case "#":
+                                pagina.add([
+                                    pagina.sprite("acciaio"),
+                                    pagina.pos(x, altezza - y),
+                                    pagina.area(),
+                                    pagina.body({ isStatic: true })
+                                ]);
+                                break;
+
+                            case "^":
+                                pagina.add([
+                                    pagina.sprite("trappola"),
+                                    pagina.pos(x, altezza - y + 50),
+                                    pagina.area(),
+                                    pagina.body({ isStatic: true }),
+                                    "trappola"
+                                ]);
+                                break;
+
+                            case ">":
+                                molt = 1;
+                                if (vel && !raggiunto && posPiattaforma != -1) {
+                                    molt = parseInt(riga.charAt(posPiattaforma+1));
+                                    raggiunto = true;
+                                }
+
+                                let piattaformaDx = pagina.add([
+                                    pagina.sprite("acciaio"),
+                                    pagina.pos(x, altezza - y),
+                                    pagina.area(),
+                                    pagina.body({ isStatic: true }),
+                                    { dir: 1 }
+                                ]);
+                                piattaformaDx.onUpdate(() => {
+                                    piattaformaDx.move(200 * molt * piattaformaDx.dir, 0);
+                                    if (piattaformaDx.pos.x <= 0 || piattaformaDx.pos.x >= larghezza - 62) piattaformaDx.dir *= -1;
+                                })
+                                break;
+
+                            case "<":
+                                molt = 1;
+                                if (vel && !raggiunto && posPiattaforma != -1) {
+                                    molt = parseInt(riga.charAt(posPiattaforma+1));
+                                    raggiunto = true;
+                                }
+
+                                let piattaformaSx = pagina.add([
+                                    pagina.sprite("acciaio"),
+                                    pagina.pos(larghezza - 62, altezza - y),
+                                    pagina.area(),
+                                    pagina.body({ isStatic: true }),
+                                    { dir: -1 }
+                                ]);
+                                piattaformaSx.onUpdate(() => {
+                                    piattaformaSx.move(200 * molt * piattaformaSx.dir, 0);
+                                    if (piattaformaSx.pos.x <= 0 || piattaformaSx.pos.x >= larghezza - 62) piattaformaSx.dir *= -1;
+                                })
+                                break;
+
+                            case "@":
+                                pagina.add([
+                                    pagina.sprite("portale"),
+                                    pagina.pos(x, altezza - y),
+                                    pagina.area(),
+                                    "portale"
+                                ]);
+                                break;
+
+                            default:
+                                break;
+                        }
+
+                        x += 64;
+                    };
+
+                    pagina.add([
+                        pagina.rect(10, 64),
+                        pagina.pos(-20, altezza - y),
+                        pagina.area(),
+                        pagina.body({ isStatic: true })
+                    ]);
+                    pagina.add([
+                        pagina.rect(10, 64),
+                        pagina.pos(larghezza + 10, altezza - y),
+                        pagina.area(),
+                        pagina.body({ isStatic: true })
+                    ]);
+
+                    x = 0;
+                    y += 64;
+                });
+
+            }
+
+        }
+
+        class Giocatore {
+            pagina;
+            giocatore;
+            salto;
+
+            constructor(pagina) {
+                this.pagina = pagina;
+
+                this.giocatore = this.pagina.add([
+                    this.pagina.sprite("bean"),
+                    this.pagina.pos(this.pagina.center()),
+                    this.pagina.area(),
+                    this.pagina.body(),
+                    this.pagina.health(3),
+                    "giocatore"
+                ]);
+
+                this.salto = 0;
+
+                this.giocatore.onKeyDown(["d", "right"], () => this.muoviDx());
+                this.giocatore.onKeyDown(["a", "left"], () => this.muoviSx());
+                
+                this.giocatore.onKeyPress(["space", "w"], () => this.salta());
+                this.giocatore.onKeyPress("q", () => this.mostraPos());
+
+                this.giocatore.on("hurt", () => this.danno());
+
+                this.giocatore.onCollide("trappola", () => {
+                    this.giocatore.hurt(1);
+                });
+
+                this.giocatore.onUpdate(() => this.muoviCamera());
+            }
+            distruggi() {
+                this.giocatore.destroy();
+            }
+
+            salta() {
+                // this.giocatore.jump(400)
+                if (this.giocatore.isGrounded()) this.salto = 0;
+
+                if (this.salto < 2) {
+                    this.giocatore.jump(400);
+                    this.salto++;
+                }
+            }
+
+            muoviDx() {
+                if (this.giocatore.isGrounded()) this.giocatore.move(500, 0);
+                else this.giocatore.move(200, 0);
+            }
+
+            muoviSx() {
+                if (this.giocatore.isGrounded()) this.giocatore.move(-500, 0);
+                else this.giocatore.move(-200, 0);
+            }
+
+            danno() {
+                if (this.giocatore.hp() == 2) this.giocatore.use(sprite("bean2"));
+                else if (this.giocatore.hp() == 1) this.giocatore.use(sprite("bean3"));
+            }
+
+
+            mostraPos() {
+                console.log(this.giocatore.pos);
+            }
+
+            muoviCamera() {
+                let x, y;
+                x = this.giocatore.pos["x"];
+                y = this.giocatore.pos["y"];
+
+                if (y > 320) y = 320;
+
+                pagina.setCamPos(750, y);
+                // pagina.setCamPos(this.giocatore.pos)
+            }
+
+        }
 
         const larghezza = 1500;
         const altezza = 650;
 
-        const pagina = kaplay ({
+        const pagina = kaplay({
             width: larghezza,
             height: altezza,
-            background: [135, 206, 235],
         });
         pagina.onKeyPress((key) => {
-            debug.log("key: "+key);
+            debug.log("key: " + key);
         });
         pagina.onKeyPress("f", () => {
             setFullscreen(!isFullscreen());
         });
 
-        pagina.setGravity(1000);
         loadSprite("terra", "./sprites/grass.png");
         loadSprite("acciaio", "./sprites/steel.png");
         loadSprite("trappola", "./sprites/spike.png");
@@ -36,20 +289,25 @@
         loadSprite("bean2", "./sprites/bean2.png");
         loadSprite("bean3", "./sprites/bean3.png");
 
-        let mappa = [
+        loadSprite("cielo1", "./sprites/sfondo1.jpg");
+        pagina.setGravity(1000);
+
+
+
+        let mappa1 = [
             "           @",
             "       ######",
             "",
             "     ===   #",
-            "                #",
-            "                    #",
+            "            ^   #",
+            "            #       #",
             "",
             "       =    = =     ==",
             "       ^?",
             "=   =  =?",
             "  = ",
             "?",
-            ">3",
+            ">4",
             " ?",
             "",
             "<",
@@ -62,208 +320,58 @@
             " =   =   ",
             "==========!"
         ]
+        let mappa2 = [
+            "            @",
+            "      #   #####",
+            "#",
+            "      ^",
+            "    ###",
+            "                         <4",
+            "                #",
+            ">6",
+            "        #",
+            "",
+            "             #",
+            "         #",
+            "    ^            ^!",
+            "   ###           #!",
+            "",
+            "                  <3",
+            "",
+            "       >",
+            ">",
+            " ^?",
+            "=!"
+        ]
 
-        pagina.add([
-            pagina.rect(10, 5000),
-            pagina.pos(-10, 0),
-            pagina.area(),
-            pagina.body( {isStatic : true })
-        ]);
-        pagina.add([
-            pagina.rect(10, 5000),
-            pagina.pos(larghezza, 0),
-            pagina.area(),
-            pagina.body( {isStatic : true })
-        ]);
-
-        function generaMappa(mappa) {
-            mappa.reverse();
-
-            let x = 0;
-            let y = 0;
-            mappa.forEach(riga => {
-                if (riga.charAt(riga.length-1) == "!") {
-                    riga = riga.slice(0, -1); 
-                    while (riga.length <= 24) {
-                        if (riga.charAt(riga.length-1) == "=") riga += "=";
-                        else if (riga.charAt(riga.length-1) == " ") riga += " ";
-                    }
-                }
-
-                if (riga.charAt(riga.length-1) == "?") {
-                    if (riga.length == 1) riga = "="+riga;
-                    riga = riga.slice(0, -1);
-
-                    let trappole = false;
-                    while (riga.length <= 24) {
-                        if (riga.charAt(riga.length-1) == "=") riga += "  ";
-                        else if (riga.charAt(riga.length-1) == " ") {
-                            if (!trappole) riga += " =";
-                            else riga += " ^";
-                        }
-                        else if (riga.charAt(riga.length-1) == "^") {
-                            riga += "  ";
-                            trappole = true;
-                        }
-                    }
-                }
-
-                let vel = false;
-                if ((riga.charAt(riga.length-1) == "2" || riga.charAt(riga.length-1) == "3") && (riga.charAt(riga.length-2) == "<" || riga.charAt(riga.length-2) == ">")) {
-                    vel = true;
-                }
-                let raggiunto = false;
-                for (let i = 0; i < riga.length; i++) {
-                    if (vel && raggiunto) {
-                        vel = false;
-                        raggiunto = false;
-                        continue;
-                    }
-
-                    switch (riga.charAt(i)) {
-                        case "=":
-                            pagina.add([
-                                pagina.sprite("terra"),
-                                pagina.pos(x, altezza-50-y),
-                                pagina.area(),
-                                pagina.body( { isStatic: true })
-                            ]);
-                            break;
-                        
-                        case "#":
-                            pagina.add([
-                                pagina.sprite("acciaio"),
-                                pagina.pos(x, altezza-50-y),
-                                pagina.area(),
-                                pagina.body( { isStatic: true })
-                            ]);
-                            break;
-
-                        case "^":
-                            pagina.add([
-                                pagina.sprite("trappola"),
-                                pagina.pos(x, altezza-y),
-                                pagina.area(),
-                                pagina.body( { isStatic: true }),
-                                "trappola"
-                            ]);
-                            break;
-
-                        case ">":
-                            let molt = 1;
-                            if (vel && !raggiunto && (riga.charAt(i+1) == "2" || riga.charAt(i+1) == "3")) {
-                                molt = parseInt(riga.charAt(i+1));
-                                raggiunto = true;
-                            }
-
-                            let piattaformaDx = pagina.add([
-                                pagina.sprite("acciaio"),
-                                pagina.pos(x, altezza-50-y),
-                                pagina.area(),
-                                pagina.body( { isStatic: true }),
-                                { dir: 1 }
-                            ]);
-                            piattaformaDx.onUpdate(() => {
-                                piattaformaDx.move(200*molt*piattaformaDx.dir, 0);
-                                if (piattaformaDx.pos.x <= 0 || piattaformaDx.pos.x >= larghezza-62) piattaformaDx.dir *= -1;
-                            })
-                            break;
-
-                        case "<":
-                            let piattaformaSx = pagina.add([
-                                pagina.sprite("acciaio"),
-                                pagina.pos(larghezza-62, altezza-50-y),
-                                pagina.area(),
-                                pagina.body( { isStatic: true }),
-                                { dir: -1 }
-                            ]);
-                            piattaformaSx.onUpdate(() => {
-                                piattaformaSx.move(200*piattaformaSx.dir, 0);
-                                if (piattaformaSx.pos.x <= 0 || piattaformaSx.pos.x >= larghezza-62) piattaformaSx.dir *= -1;
-                            })
-                            break;
-                        
-                        case "@":
-                            pagina.add([
-                                pagina.sprite("portale"),
-                                pagina.pos(x, altezza-50-y),
-                                pagina.area(),
-                                // pagina.body( { isStatic: true })
-                            ]);
-                            break;
-                    
-                        default:
-                            break;
-                    }
-
-                    x += 64;
-                };
-
-                x = 0;
-                y += 64;
-            });
-        }
-        generaMappa(mappa);
-
-        const giocatore = pagina.add([
-            pagina.sprite("bean"),
-            pagina.pos(pagina.center()),
-            pagina.area(),
-            pagina.body(),
-            pagina.health(3),
-            "giocatore"
-        ]);
-
-        let salto = 0;
-        giocatore.onKeyPress(["space", "w"], () => {
-            // giocatore.jump(400)
-            if (giocatore.isGrounded()) salto = 0;
-
-            if (salto < 2) {
-                giocatore.jump(400);
-                salto++;
+        function caricaLivello() {
+            console.log(nlvl)
+            if (nlvl == 1) livello = new Livello(mappa1);
+            else {
+                livello = new Livello(mappa2);
+                console.log("caricato lvl2")
             }
-        });
 
-        giocatore.onKeyDown(["d", "right"], () => {
-            if (giocatore.isGrounded()) giocatore.move(500, 0);
-            else giocatore.move(200, 0);
-        });
-        giocatore.onKeyDown(["a", "left"], () => {
-            if (giocatore.isGrounded()) giocatore.move(-500, 0);
-            else giocatore.move(-200, 0);
-        })
+            giocatore = new Giocatore(pagina);
+        }
 
-        giocatore.onCollide("trappola", () => {
-            giocatore.hurt(1);
-        });
+        pagina.onCollide("giocatore", "portale", () => {
+            pagina.destroyAll();
+            nlvl++;
 
-        giocatore.on("hurt", () => {
-            if (giocatore.hp() == 2) giocatore.use(sprite("bean2"));
-            else if (giocatore.hp() == 1) giocatore.use(sprite("bean3"));
+            caricaLivello();
         });
-        giocatore.on("death", () => {
-            pagina.destroy(giocatore);
+        pagina.on("death", "giocatore", () => {
             console.log("sei morto");
-        })
+            giocatore.distruggi();
+            giocatore = new Giocatore(pagina);
+        });
 
-        giocatore.onKeyPress("q", () => {
-            console.log(giocatore.pos);
-        })
-
-        giocatore.onUpdate(() => {
-            let x, y;
-            x = giocatore.pos["x"];
-            y = giocatore.pos["y"];
-
-            if (y > 320) y = 320;
-            // if (x < 750) x = 750;
-            // if (x > 820) x = 820;
-
-            pagina.setCamPos(750, y);
-        })
-        
+        let nlvl = 1;
+        let livello, giocatore;
+        caricaLivello();
 
     </script>
 </body>
+
 </html>
